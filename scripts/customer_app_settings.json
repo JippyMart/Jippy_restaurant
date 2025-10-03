@@ -1,0 +1,15 @@
+{
+  "latest_version": "2.2.4",
+  "force_update": false,
+  "update_url": "https://play.google.com/store/apps/details?id=com.jippymart.customer",
+  "android_version": "2.2.4",
+  "ios_version": "2.2.4",
+  "android_build": "13",
+  "ios_build": "13",
+  "min_required_version": "2.0.0",
+  "update_message": "New features and bug fixes available! Update now for the best experience.",
+  "last_updated": "2024-01-15T10:30:00Z",
+  "app_name": "Customer App",
+  "package_name": "com.jippymart.customer",
+  "app_type": "customer"
+}
