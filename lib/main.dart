@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -67,13 +68,13 @@ Future<void> initializeFirebase() async {
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    
+
     // Initialize Firebase
     await initializeFirebase();
-    
+
     // Initialize preferences
     await Preferences.initPref();
-    
+
     // Run the app
     runApp(const MyApp());
   } catch (e) {

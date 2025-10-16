@@ -35,6 +35,7 @@ import 'package:uuid/uuid.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../themes/round_button_fill.dart';
+import 'package:duration_picker/duration_picker.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -2696,7 +2697,45 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+  Future<void> _showDurationPicker(BuildContext context, HomeController controller) async {
+    // Get current duration if exists
+    Duration initialDuration = const Duration(minutes: 10);
+    if (controller.estimatedTimeController.value.text.isNotEmpty) {
+      final minutes = int.tryParse(controller.estimatedTimeController.value.text) ?? 10;
+      initialDuration = Duration(minutes: minutes.clamp(1, 40)); // Ensure within 1-40 range
+    }
 
+    final duration = await showModalBottomSheet<Duration>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DurationPickerBottomSheet(
+        initialDuration: initialDuration,
+      ),
+    );
+
+    if (duration != null) {
+      _updateDuration(duration, controller);
+    }
+  }
+
+  void _updateDuration(Duration duration, HomeController controller) {
+    final minutes = duration.inMinutes;
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = duration.inHours;
+    final mins = duration.inMinutes.remainder(60);
+    controller.estimatedTimeController.value.text = '$hours:${twoDigits(mins)}';
+    print("${controller.estimatedTimeController.value.text} _updateDuration");
+    controller.estimatedTimeController.refresh();
+  }
+  // void _updateDuration(Duration duration,  HomeController controller, ) {
+  //   String twoDigits(int n) => n.toString().padLeft(2, '0');
+  //   final hours = twoDigits(duration.inHours);
+  //   final minutes = twoDigits(duration.inMinutes.remainder(60));
+  //
+  //   controller.estimatedTimeController.value.text = '$hours:$minutes';
+  //   controller.estimatedTimeController.refresh();
+  // }
   estimatedTimeDialog(HomeController controller, themeChange,
       OrderModel orderModel, BuildContext context) {
     return Dialog(
@@ -2742,14 +2781,84 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(
                     height: 20,
                   ),
-                  TextFieldWidget(
-                    title: 'Estimated time to Prepare'.tr,
-                    inputFormatters: [MaskedInputFormatter('##:##')],
-                    controller: controller.estimatedTimeController.value,
-                    hintText: '00:00'.tr,
-                    textInputType: TextInputType.number,
-                    prefix: const Icon(Icons.alarm),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () async => _showDurationPicker(context,controller),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.access_time_rounded,
+                                color: Theme.of(context).primaryColor,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Estimated Time',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Obx(() => Text(
+                                      controller.estimatedTimeController.value.text.isEmpty
+                                          ? 'Select duration'
+                                          : controller.estimatedTimeController.value.text,
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        color: controller.estimatedTimeController.value.text.isEmpty
+                                            ? Colors.grey.shade500
+                                            : Colors.black,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    )),
+                                  ],
+                                ),
+                              ),
+                              Obx(() => controller.estimatedTimeController.value.text.isNotEmpty
+                                  ? IconButton(
+                                icon: Icon(Icons.clear, color: Colors.grey.shade500, size: 20),
+                                onPressed: () {
+                                  controller.estimatedTimeController.value.text = '';
+                                  controller.estimatedTimeController.refresh();
+                                },
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 40),
+                              )
+                                  : Icon(
+                                Icons.arrow_drop_down_rounded,
+                                color: Colors.grey.shade500,
+                                size: 24,
+                              )),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  // TextFieldWidget(
+    //                 title: 'Estimated time to Prepare'.tr,
+    //                 inputFormatters: [MaskedInputFormatter('##:##')],
+    //                 controller: controller.estimatedTimeController.value,
+    //                 hintText: '00:00'.tr,
+    //                 textInputType: TextInputType.number,
+    //                 prefix: const Icon(Icons.alarm),
+    //               ),
                   Row(
                     children: [
                       Expanded(
@@ -2881,11 +2990,9 @@ class HomeScreen extends StatelessWidget {
                                         driver);
                                   }
                                 }
-
                                 SendNotification.sendFcmMessage(
                                     Constant.restaurantAccepted,
-                                    orderModel.author!.fcmToken.toString(), {});
-
+                                    orderModel.author!.fcmToken.toString(), {},);
                                 ShowToastDialog.closeLoader();
                                 Get.back();
                               }
@@ -2959,6 +3066,186 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+class DurationPickerBottomSheet extends StatefulWidget {
+  final Duration initialDuration;
+
+  const DurationPickerBottomSheet({
+    Key? key,
+    required this.initialDuration,
+  }) : super(key: key);
+
+  @override
+  State<DurationPickerBottomSheet> createState() => _DurationPickerBottomSheetState();
+}
+
+class _DurationPickerBottomSheetState extends State<DurationPickerBottomSheet> {
+  late Duration _selectedDuration;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDuration = widget.initialDuration;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 20,
+            color: Colors.black.withOpacity(0.2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const SizedBox(width: 40),
+                  Expanded(
+                    child: Text(
+                      'Select Duration',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(height: 1),
+
+            // Minutes Picker
+            // SizedBox(
+            //   height: 200,
+            //   child: ListWheelScrollView(
+            //     itemExtent: 50,
+            //     diameterRatio: 1.5,
+            //     onSelectedItemChanged: (index) {
+            //       setState(() {
+            //         _selectedDuration = Duration(minutes: index + 1); // 1 to 40 minutes
+            //       });
+            //     },
+            //     children: List.generate(40, (index) { // Only 40 minutes
+            //       final minutes = index + 1;
+            //       return Center(
+            //         child: Text(
+            //           '$minutes ${minutes == 1 ? 'minute' : 'minutes'}',
+            //           style: TextStyle(
+            //             fontSize: 20,
+            //             color: minutes == _selectedDuration.inMinutes
+            //                 ? Theme.of(context).primaryColor
+            //                 : Colors.grey.shade600,
+            //             fontWeight: minutes == _selectedDuration.inMinutes
+            //                 ? FontWeight.w600
+            //                 : FontWeight.normal,
+            //           ),
+            //         ),
+            //       );
+            //     }),
+            //   ),
+            // ),
+
+            // Selected Duration Display
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.access_time, color: Theme.of(context).primaryColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${_selectedDuration.inMinutes} minutes',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Quick Select Buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [5, 10, 15, 20, 25, 30, 35, 40].map((minutes) {
+                  return FilterChip(
+                    label: Text('$minutes min'),
+                    selected: _selectedDuration.inMinutes == minutes,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedDuration = Duration(minutes: minutes);
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+
+            // Action Buttons
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context, _selectedDuration,),
+                      style: FilledButton.styleFrom(backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 16,),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Confirm'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -72,7 +72,6 @@ class HomeController extends GetxController {
 
   getOrder() async {
     print('🔄 Setting up order listener for vendor: ${Constant.userModel?.vendorID}');
-    
     FireStoreUtils.fireStore
         .collection(CollectionName.restaurantOrders)
         .where('vendorID', isEqualTo: Constant.userModel!.vendorID)
